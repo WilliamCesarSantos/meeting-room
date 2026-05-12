@@ -1,118 +1,119 @@
-# meeting-room
+# Meeting Room
 
-API de exemplo para a Aula 1 do projeto de reservas de salas com Quarkus.
+Meeting Room is a backend API for room management and booking operations. The project exposes REST endpoints for authentication, room CRUD, and reservation CRUD, and includes an observability stack for metrics and tracing.
 
-## Escopo da Aula 1
+## What this project includes
 
-- entidade `Room` com `id`, `name` e `capacity`
-- endpoint `POST /rooms`
-- endpoint `GET /rooms`
-- filtro opcional `GET /rooms?minCapacity=10`
-- script `rooms-demo.sh` com `curl` para demonstração em sala
+- Authentication endpoint (`/auth/login`) with JWT-based security.
+- Room management endpoints (`/rooms`) with pagination and filtering.
+- Reservation endpoints (`/reservations`) with date and room filters.
+- Local infrastructure for PostgreSQL, LocalStack (AWS SSM), Prometheus, Grafana, and Jaeger.
+- Production-like Docker Compose profile with NGINX in front of the API service.
 
-## Running the application in dev mode
+## Technology stack
 
-You can run your application in dev mode that enables live coding using:
+### Application
 
-```shell script
+- Java 25
+- Quarkus 3.34.x
+- Maven Wrapper (`./mvnw`)
+- Quarkus REST + Jackson
+- Hibernate ORM with Panache
+- PostgreSQL JDBC driver
+- Hibernate Validator
+- SmallRye JWT (authentication/authorization)
+- Micrometer + Prometheus registry
+- SmallRye Health
+- Quarkus REST Client + Fault Tolerance
+- OpenTelemetry (tracing)
+- Quarkus Amazon SSM client
+- Caffeine cache
+
+### Infrastructure (Docker Compose)
+
+- PostgreSQL 16
+- LocalStack (SSM)
+- Prometheus
+- Grafana
+- Jaeger
+- NGINX
+
+## Main API routes
+
+- `POST /auth/login`
+- `GET/POST/PUT/DELETE /rooms`
+- `GET/POST/PUT/DELETE /reservations`
+
+## API functionality by group
+
+### Auth API (`/auth`)
+
+- `POST /auth/login`: authenticates a user and returns a JWT token used to call protected endpoints.
+
+### Rooms API (`/rooms`)
+
+- `GET /rooms`: lists rooms with pagination and optional filters such as `name` and `minCapacity`.
+- `GET /rooms/{id}`: returns room details by id.
+- `POST /rooms`: creates a new room.
+- `PUT /rooms/{id}`: updates an existing room.
+- `DELETE /rooms/{id}`: removes a room.
+- Access profile: read operations are public; write operations require `ADMIN` role.
+
+### Reservations API (`/reservations`)
+
+- `GET /reservations`: lists reservations with pagination and optional filters such as `roomId` and `date`.
+- `GET /reservations/{id}`: returns reservation details by id.
+- `POST /reservations`: creates a reservation for a room and time window.
+- `PUT /reservations/{id}`: updates an existing reservation.
+- `DELETE /reservations/{id}`: deletes a reservation.
+- Access profile: read operations are public; write operations require `USER` or `ADMIN` role.
+
+## Run with Docker Compose (build included)
+
+This project has a `prd` compose profile for the API (`meeting-room`) and NGINX (`nginx`).
+
+### Prerequisites
+
+- Docker Engine or Docker Desktop
+- Docker Compose v2
+
+### Step by step
+
+1. Open a terminal in the project root.
+2. Build the `meeting-room` image from `src/main/docker/Dockerfile.native`.
+3. Start infrastructure and app services using the `prd` profile.
+4. Check service status and access URLs.
+
+```bash
+docker compose --profile prd build
+docker compose --profile prd up -d
+docker compose --profile prd ps
+```
+
+### Access points
+
+- API via NGINX: `http://localhost:8080`
+- NGINX secondary port: `http://localhost:8081`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` (default: `admin` / `admin`)
+- Jaeger UI: `http://localhost:16686`
+
+### Useful commands
+
+```bash
+docker compose --profile prd logs -f
+docker compose --profile prd down
+docker compose --profile prd down -v
+```
+
+## Optional: run in Quarkus dev mode (without API container)
+
+If you only want supporting services in containers and run Quarkus from your machine:
+
+```bash
+docker compose up -d postgres prometheus grafana jaeger localstack
 ./mvnw quarkus:dev
 ```
 
-Depois de subir a aplicação, a API ficará disponível em `http://localhost:8080`.
-
-## Endpoints disponíveis
-
-### Criar sala
-
-`POST /rooms`
-
-Exemplo de payload:
-
-```json
-{
-  "name": "Sala Java",
-  "capacity": 12
-}
-```
-
-### Listar salas
-
-`GET /rooms`
-
-### Filtrar por capacidade mínima
-
-`GET /rooms?minCapacity=15`
-
-## Script de demonstração
-
-Com a aplicação já em execução, rode:
-
-```bash
-chmod +x rooms-demo.sh
-./rooms-demo.sh
-```
-
-Se quiser apontar para outra URL base:
-
-```bash
-BASE_URL=http://localhost:8080 ./rooms-demo.sh
-```
-
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
-
-## Packaging and running the application
-
-The application can be packaged using:
-
-```shell script
-./mvnw package
-```
-
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/meeting-room-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- Hibernate ORM ([guide](https://quarkus.io/guides/hibernate-orm)): Define your persistent model with Hibernate ORM and Jakarta Persistence
-- Hibernate Validator ([guide](https://quarkus.io/guides/validation)): Validate object properties (field, getter) and method parameters for your beans (REST, CDI, Jakarta Persistence)
-- Hibernate ORM with Panache ([guide](https://quarkus.io/guides/hibernate-orm-panache)): Simplify your persistence code for Hibernate ORM via the active record or the repository pattern
-
-## Provided Code
-
-### Hibernate ORM
-
-Create your first JPA entity
-
-[Related guide section...](https://quarkus.io/guides/hibernate-orm)
-
-
-[Related Hibernate with Panache section...](https://quarkus.io/guides/hibernate-orm-panache)
+In this mode, the app is usually available at `http://localhost:8080`.
 
